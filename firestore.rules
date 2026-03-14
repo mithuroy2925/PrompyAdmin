@@ -1,0 +1,163 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: settings
+    // Document ID: general
+    // Fields:
+    //   - websiteName: string (required)
+    //   - logoUrl: string (optional)
+    //   - adsScript: string (optional)
+    //
+    // Document ID: footer
+    // Fields:
+    //   - menuItems: list of objects (required)
+    //
+    // Collection: pages
+    // Document ID: {pageId}
+    // Fields:
+    //   - title: string (required)
+    //   - slug: string (required)
+    //   - content: string (required)
+    //   - isVisible: boolean (required)
+    //   - createdAt: string (optional)
+    //
+    // Collection: prompts
+    // Document ID: {promptId}
+    // Fields:
+    //   - title: string (required)
+    //   - description: string (required)
+    //   - promptText: string (required)
+    //   - category: string (required)
+    //   - imageUrl: string (optional)
+    //   - createdAt: string (optional)
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - email: string (required)
+    //   - role: string (required, 'admin' or 'user')
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == "mithuroy2925@gmail.com" ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+             (request.resource.data[field] is string &&
+              request.resource.data[field].size() >= minLen &&
+              request.resource.data[field].size() <= maxLen);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidSettingsGeneral() {
+      return hasOnlyAllowedFields(['websiteName', 'logoUrl', 'adsScript']) &&
+             validStringLength('websiteName', 1, 100) &&
+             isValidOptionalString('logoUrl', 0, 1000) &&
+             isValidOptionalString('adsScript', 0, 10000);
+    }
+
+    function isValidSettingsFooter() {
+      return hasOnlyAllowedFields(['menuItems']) &&
+             request.resource.data.menuItems is list &&
+             request.resource.data.menuItems.size() <= 50;
+    }
+
+    function isValidPage() {
+      return hasOnlyAllowedFields(['title', 'slug', 'content', 'isVisible', 'createdAt']) &&
+             validStringLength('title', 1, 200) &&
+             validStringLength('slug', 1, 200) &&
+             validStringLength('content', 0, 100000) &&
+             request.resource.data.isVisible is bool &&
+             isValidOptionalString('createdAt', 0, 50);
+    }
+
+    function isValidPrompt() {
+      return hasOnlyAllowedFields(['title', 'description', 'promptText', 'category', 'imageUrl', 'createdAt']) &&
+             validStringLength('title', 1, 200) &&
+             validStringLength('description', 1, 5000) &&
+             validStringLength('promptText', 1, 50000) &&
+             validStringLength('category', 1, 100) &&
+             isValidOptionalString('imageUrl', 0, 1000) &&
+             isValidOptionalString('createdAt', 0, 50);
+    }
+
+    function isValidUser() {
+      return hasOnlyAllowedFields(['email', 'role']) &&
+             validStringLength('email', 5, 200) &&
+             request.resource.data.role in ['admin', 'user'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /settings/general {
+      allow read: if true;
+      allow create: if isAdmin() && isValidSettingsGeneral();
+      allow update: if isAdmin() && isValidSettingsGeneral();
+      allow delete: if isAdmin();
+    }
+
+    match /settings/footer {
+      allow read: if true;
+      allow create: if isAdmin() && isValidSettingsFooter();
+      allow update: if isAdmin() && isValidSettingsFooter();
+      allow delete: if isAdmin();
+    }
+
+    match /pages/{pageId} {
+      allow read: if resource == null || resource.data.isVisible == true || isAdmin();
+      allow create: if isAdmin() && isValidPage();
+      allow update: if isAdmin() && isValidPage();
+      allow delete: if isAdmin();
+    }
+
+    match /prompts/{promptId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidPrompt();
+      allow update: if isAdmin() && isValidPrompt();
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAdmin() && isValidUser();
+      allow update: if isAdmin() && isValidUser();
+      allow delete: if isAdmin();
+    }
+  }
+}

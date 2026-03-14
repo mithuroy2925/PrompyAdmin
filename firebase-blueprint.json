@@ -1,0 +1,102 @@
+{
+  "entities": {
+    "SettingsGeneral": {
+      "title": "General Settings",
+      "description": "General website settings like name, logo, and ads script.",
+      "type": "object",
+      "properties": {
+        "websiteName": {
+          "type": "string",
+          "description": "The name of the website."
+        },
+        "logoUrl": {
+          "type": "string",
+          "description": "URL of the website logo."
+        },
+        "adsScript": {
+          "type": "string",
+          "description": "Custom script code for ads."
+        }
+      },
+      "required": ["websiteName"]
+    },
+    "SettingsFooter": {
+      "title": "Footer Settings",
+      "description": "Footer menu items.",
+      "type": "object",
+      "properties": {
+        "menuItems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string" },
+              "url": { "type": "string" }
+            },
+            "required": ["label", "url"]
+          }
+        }
+      },
+      "required": ["menuItems"]
+    },
+    "Page": {
+      "title": "Custom Page",
+      "description": "A dynamically created page.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "content": { "type": "string" },
+        "isVisible": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "slug", "content", "isVisible"]
+    },
+    "Prompt": {
+      "title": "Prompt",
+      "description": "A prompt entry.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "promptText": { "type": "string" },
+        "category": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "promptText", "category"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile and role.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/settings/general": {
+      "schema": "SettingsGeneral",
+      "description": "General settings document."
+    },
+    "/settings/footer": {
+      "schema": "SettingsFooter",
+      "description": "Footer settings document."
+    },
+    "/pages/{pageId}": {
+      "schema": "Page",
+      "description": "Custom pages."
+    },
+    "/prompts/{promptId}": {
+      "schema": "Prompt",
+      "description": "Prompts collection."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Users collection."
+    }
+  }
+}
